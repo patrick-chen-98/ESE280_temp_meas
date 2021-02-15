@@ -1,0 +1,56 @@
+<ASSEMBLER_INFO>
+ <VERSION>2.2.7</VERSION>
+ <DEVICE>"ATmega4809"</DEVICE>
+ <WORKING_DIR>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\Debug</WORKING_DIR>
+ <INCLUDE_PATH>
+  <DIR>D:/Atmel Studio\7.0\Packs\atmel\ATmega_DFP\1.3.300\avrasm\inc</DIR>
+  <DIR>D:\Atmel Studio\7.0\toolchain\avr8\avrassembler\Include</DIR>
+  <DIR></DIR>
+ </INCLUDE_PATH>
+ <SOURCE_FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</SOURCE_FILE>
+ <INCLUDED_FILES>
+  <FILE>D:/Atmel Studio\7.0\Packs\atmel\ATmega_DFP\1.3.300\avrasm\inc\m4809def.inc</FILE>
+ </INCLUDED_FILES>
+ <OBJECT_FILES>
+  <FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\Debug\temp_meas.obj</FILE>
+ </OBJECT_FILES>
+ <HEX_FILES>
+  <FILE>temp_meas.hex</FILE>
+ </HEX_FILES>
+ <OUTPUT_FILES>
+  <FILE>temp_meas.map</FILE>
+  <FILE>temp_meas.lss</FILE>
+ </OUTPUT_FILES>
+ <LABELS>
+  <digit_num><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>29</LINE></digit_num>
+  <led_display><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>30</LINE></led_display>
+  <reset><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>34</LINE></reset>
+  <start><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>42</LINE></start>
+  <TCA0_OVF_ISR><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>118</LINE></TCA0_OVF_ISR>
+  <ADC0_RESRDY_ISR><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>168</LINE></ADC0_RESRDY_ISR>
+  <POST_display><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>390</LINE></POST_display>
+  <main><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>85</LINE></main>
+  <multiplex_display><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>273</LINE></multiplex_display>
+  <mpy16u><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>561</LINE></mpy16u>
+  <bin16_to_BCD><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>456</LINE></bin16_to_BCD>
+  <hex_to_7seg><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>349</LINE></hex_to_7seg>
+  <digit_zero><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>286</LINE></digit_zero>
+  <digit_one><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>293</LINE></digit_one>
+  <digit_two><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>300</LINE></digit_two>
+  <digit_three><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>307</LINE></digit_three>
+  <check_digit_num><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>318</LINE></check_digit_num>
+  <reset_digit><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>314</LINE></reset_digit>
+  <update_digit_num><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>323</LINE></update_digit_num>
+  <hextable><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>363</LINE></hextable>
+  <loop><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>392</LINE></loop>
+  <var_delay><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>422</LINE></var_delay>
+  <outer_loop><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>423</LINE></outer_loop>
+  <inner_loop><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>425</LINE></inner_loop>
+  <div16u><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>511</LINE></div16u>
+  <d16u_1><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>514</LINE></d16u_1>
+  <d16u_2><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>519</LINE></d16u_2>
+  <d16u_3><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>528</LINE></d16u_3>
+  <m16u_1><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>567</LINE></m16u_1>
+  <noad8><FILE>C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm</FILE><LINE>570</LINE></noad8>
+ </LABELS>
+</ASSEMBLER_INFO>

@@ -1,0 +1,650 @@
+
+AVRASM ver. 2.2.7  C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm Thu Nov 19 17:42:28 2020
+
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(26): Including file 'D:/Atmel Studio\7.0\Packs\atmel\ATmega_DFP\1.3.300\avrasm\inc\m4809def.inc'
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(503): warning: Register r16 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(504): warning: Register r17 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(549): warning: Register r16 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(550): warning: Register r17 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(551): warning: Register r18 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(552): warning: Register r19 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(553): warning: Register r18 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(554): warning: Register r19 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(555): warning: Register r20 already defined by the .DEF directive
+C:\Users\17719\Desktop\280_prelab\prelab11\temp_meas\temp_meas\main.asm(26): Including file 'D:/Atmel Studio\7.0\Packs\atmel\ATmega_DFP\1.3.300\avrasm\inc\m4809def.inc'
+                                 
+                                 
+                                 ;*
+                                 ;* Title: "temp_meas"- temperature measurements
+                                 ;*
+                                 ;* Author:					Pengxu Chen
+                                 ;* Version:					6.0						
+                                 ;* Last updated:			11/19/2020
+                                 ;* Target:			;ATmega4809 @3.3MHz
+                                 ;*
+                                 ;* DESCRIPTION:
+                                 ;* This program polls the flag associated with ADC0. ADC0 convert 
+                                 ;* analog data from a temperature sneor to a 10 bit binary. The
+                                 ;* 10 bit binary need to go through serval calculation and 
+                                 ;* conversion The flag is set by the ADC0 result ready interrupt.
+                                 ;* If the interrupt flag is set, the result of the ADC0 is read
+                                 ;* and converted to decimal number. 
+                                 ;* 
+                                 ;* This program also continually multiplexes the display so that 
+                                 ;* the temperature are constantly seen on the display. The 
+                                 ;* display time for each digit is control by the internal timer. 
+                                 ;* Every time the timer is timed to the top value, it will set a 
+                                 ;* interrupt flag, and the next digit will be displayed. 
+                                 ;*
+                                 ;*******************************************************************
+                                 .list 
+                                 .dseg
+002800                           digit_num: .byte 1   ;locate 1 bytes for digit_num in sram
+002801                           led_display: .byte 4 ;locate 4 bytes for led_display in sram
+                                 
+                                 .cseg
+                                 .equ PERIOD_EXAMPLE_VALUE = 65
+                                 reset:	
+000000 940c 002e                  	jmp start			;reset vector executed a power on
+                                 .org TCA0_OVF_vect      ;TCA0 over flow interrupt vector
+00000e 940c 0062                 	jmp TCA0_OVF_ISR        ;jump to "TCA0_ISR"
+                                 .org ADC0_RESRDY_vect
+00002c 940c 0072                 	jmp ADC0_RESRDY_ISR ;jump to "A_D_convert_ISR"
+                                 
+                                 ;Initialization of ports and registers
+                                 start:
+00002e ef0f                      	ldi r16, 0xff
+00002f b90c                      	OUT VPORTD_DIR, r16 ;set portD as outpout
+000030 b908                      	OUT VPORTC_DIR, r16 ;set portC as outpout
+                                 	;configure TCA0
+000031 e000                      	ldi r16, TCA_SINGLE_WGMODE_NORMAL_gc 
+000032 9300 0a01                 	sts TCA0_SINGLE_CTRLB, r16  ;set TCA0 to normal mode
+000034 e001                      	ldi r16, TCA_SINGLE_OVF_bm	
+000035 9300 0a0a                 	sts TCA0_SINGLE_INTCTRL, r16 ;enable TCA0's overflow interrupt 
+                                 	;load period low byte then high byte 
+000037 e401                      	ldi r16, LOW(PERIOD_EXAMPLE_VALUE)	;set the period 
+000038 9300 0a26                 	sts TCA0_SINGLE_PER, r16 
+00003a e000                      	ldi r16, HIGH(PERIOD_EXAMPLE_VALUE) ;set the period 
+00003b 9300 0a27                 	sts TCA0_SINGLE_PER + 1, r16 
+                                 	;set clock and start timer
+00003d e00d                      	ldi r16, TCA_SINGLE_CLKSEL_DIV256_gc | TCA_SINGLE_ENABLE_bm
+00003e 9300 0a00                 	sts TCA0_SINGLE_CTRLA, r16
+000040 e000                      	ldi r16, 0x00
+000041 9300 2800                 	sts digit_num, r16 ;initialize digit number to 0
+000043 e0c1                      	ldi YL, LOW(led_display)
+000044 e2d8                      	ldi YH, HIGH(led_display);set Y to point to start of led_display
+000045 e000                      	ldi r16, 0x00
+000046 8308                      	std Y+0, r16   ;turn one all segments of digit 0 when display
+000047 8309                      	std Y+1, r16   ;turn one all segments of digit 1 when display
+000048 830a                      	std Y+2, r16   ;turn one all segments of digit 2 when display
+000049 830b                      	std Y+3, r16   ;turn one all segments of digit 3 when display
+00004a 9478                      	sei			;enable global interrupts
+00004b d0a7                      	rcall POST_display
+                                 	;confirgue ADC0
+00004c e200                      	ldi r16, VREF_ADC0REFSEL_2V5_gc
+00004d 9300 00a0                 	sts VREF_CTRLA, r16   ;set reference voltage to 2.5V
+00004f e004                      	ldi r16, 0x04
+000050 9300 0493                 	sts PORTE_PIN3CTRL, r16 ;disable portE's input buffer, intterupt 
+000052 e405                      	ldi r16, 0x45
+000053 9300 0602                 	sts ADC0_CTRLC, r16 ;set samplecap, internal ref and frequency
+000055 e00b                      	ldi r16, 0x0b
+000056 9300 0606                 	sts ADC0_MUXPOS, r16 ;set PE1 to analog input
+000058 e001                      	ldi r16, 0x01
+000059 9300 0600                 	sts ADC0_CTRLA, r16   ;Enable ADC0
+00005b 9300 060a                 	sts ADC0_INTCTRL, r16 ;enable ADC0's interrupt
+00005d e001                      	ldi r16, 0x01
+00005e 9300 0608                 	sts ADC0_COMMAND, r16  ;start ADC0's converstion
+                                 
+                                 main:
+000060 0000                      	nop
+000061 cffe                      	rjmp main              ;jump back to main
+                                 
+                                 ;*******************************************************************
+                                 ;* 
+                                 ;* "TCA0_OVF_ISR" - TCA0 overflow interrupt service routine
+                                 ;*
+                                 ;* Description: 
+                                 ;* This routine is used to call the "multiplex_display" subroutine
+                                 ;* to multiplexes the display whenever TCA0 interrupt flag is set. 
+                                 ;* Evertime this routine is called, it first saves all the rgisters
+                                 ;* that will be used in this routine. After program leaves 
+                                 ;* "multiplex_display", it clears the interrupt flag. Also, before
+                                 ;* program leaves this routine, it pops out all the registers that 
+                                 ;* are pushed at the begging of this routine in a last in first out
+                                 ;* order. 
+                                 ;*
+                                 ;* Author:					Pengxu Chen
+                                 ;* Version:					2.0						
+                                 ;* Last updated:			11/19/2020
+                                 ;* Target:					;ATmega4809 @3.3MHz 
+                                 ;* Number of words:         14
+                                 ;* Number of cycles:        47
+                                 ;* Low registers modified:
+                                 ;* High registers modified: r16, r17, r18
+                                 ;*
+                                 ;* Parameters: None
+                                 ;* Returns:    None
+                                 ;*
+                                 ;* Notes: None
+                                 ;*
+                                 ;*******************************************************************
+                                 TCA0_OVF_ISR:
+                                 	;push registers that will be used in routine to stack
+000062 930f                      	push r16  ;pushes r16 to stack
+000063 931f                      	push r17  ;pushes r17 to stack
+000064 932f                      	push r18  ;pushes r18 to stack
+000065 b70f                      	in r16, cpu_SREG  ;pushes status register to stack
+000066 930f                      	push r16
+000067 94f8                      	cli
+                                 
+000068 d050                      	rcall multiplex_display    ;calls "multiplex_display"
+000069 e001                      	ldi r16, TCA_SINGLE_OVF_bm
+00006a 9300 0a0b                 	sts TCA0_SINGLE_INTFLAGS, r16
+                                 
+00006c 910f                      	pop r16
+00006d bf0f                      	out cpu_SREG, r16 ;pops status register back 
+00006e 912f                      	pop r18   ;pops r18 back
+00006f 911f                      	pop r17   ;pops r17 back
+000070 910f                      	pop r16   ;pops r16 back6
+000071 9518                      	reti    
+                                 
+                                 ;*******************************************************************
+                                 ;* 
+                                 ;* "ADC0_RESRDY_ISR" - ADC0 result ready interrupt service routine
+                                 ;*
+                                 ;* Description: 
+                                 ;* This routine is used to read the result from ADC0 and compute and
+                                 ;* convert to decimal number with one decimal place. More 
+                                 ;* specifically, it first multiplies the ADC0's result with 2500.
+                                 ;* Then, the middle two bytes of the multiplication result is
+                                 ;* shifted to right two times, and subtract 500. Then, the 
+                                 ;* computation result is converted to BCD format. Finally, the BCD
+                                 ;* number is converted to 7 segment value. Also, the decimal point
+                                 ;* of the second digit is turned on.
+                                 ;*
+                                 ;* Author:					Pengxu Chen
+                                 ;* Version:					2.0						
+                                 ;* Last updated:			11/19/2020
+                                 ;* Target:			;ATmega4809 @3.3MHz 
+                                 ;* Number of words:         14
+                                 ;* Number of cycles:        1570
+                                 ;* Low registers modified: r14, r15
+                                 ;* High registers modified: r16, r17, r18, r19, r20, r21, r22, r23
+                                 ;*                          r24
+                                 ;*
+                                 ;* Parameters: None
+                                 ;* Returns:    None
+                                 ;*
+                                 ;* Notes: None
+                                 ;*
+                                 ;*******************************************************************
+                                 ADC0_RESRDY_ISR:
+                                 	;push registers that will be used in routine to stack
+000072 92ef                      	push r14  ;pushes r14 to stack
+000073 92ff                      	push r15  ;pushes r15 to stack
+000074 930f                      	push r16  ;pushes r16 to stack
+000075 931f                      	push r17  ;pushes r17 to stack
+000076 932f                      	push r18  ;pushes r18 to stack
+000077 933f                      	push r19  ;pushes r19 to stack
+000078 934f                      	push r20  ;pushes r20 to stack
+000079 935f                      	push r21  ;pushes r21 to stack
+00007a 936f                      	push r22  ;pushes r22 to stack
+00007b 937f                      	push r23  ;pushes r23 to stack
+00007c 938f                      	push r24  ;pushes r24 to stack
+00007d b70f                      	in r16, cpu_SREG  ;pushes status register to stack
+00007e 930f                      	push r16
+00007f 94f8                      	cli
+                                 
+000080 9100 0610                 	lds r16, ADC0_RESL ;load low byte of result to r13
+000082 9110 0611                 	lds r17, ADC0_RESH ;load high byte of result to r14
+000084 ec24                      	ldi r18, 0xc4
+000085 e039                      	ldi r19, 0x09   ;load 2500 into r19:r18
+000086 d09c                      	rcall mpy16u    ;multiply ADC0's output with 2500
+000087 9488                      	clc             ;clear carry
+                                 ;divide multiplication result by 1024
+                                 ;shift middle two bytes of multiply result to right 2 times
+000088 9546                      	lsr r20         ;right shift r20
+000089 9537                      	ror r19         ;right rotate r19
+00008a 9546                      	lsr r20         ;right shift r20
+00008b 9537                      	ror r19         ;right rotate r19
+00008c ef04                      	ldi r16, 0xf4
+00008d e011                      	ldi r17, 0x01   ;load 500 to r17:r16
+00008e 1b30                      	sub r19, r16
+00008f 0b41                      	sbc r20, r17    ;subtract 500 from the division result
+000090 2f03                      	mov r16, r19    ;copy r19 to t16
+000091 2f14                      	mov r17, r20    ;copy r20 to t17
+000092 d06e                      	rcall bin16_to_BCD  ;convert binary to BCD
+000093 e0e1                      	ldi ZL, LOW(led_display)
+000094 e2f8                      	ldi ZH, HIGH(led_display);set Z to point to start of led_display
+000095 2f26                      	mov r18, r22       ;copy r22 to r18
+000096 702f                      	andi r18, 0x0f     ;mask r18 to only keep low half 4 bits
+000097 d049                      	rcall hex_to_7seg  ;convert hex to 7 seg 
+000098 8320                      	std Z+0, r18       ;stores the 7 segment value to led_display[0]
+000099 2f26                      	mov r18, r22       ;copy r22 to r18
+00009a 7f20                      	andi r18, 0xf0     ;mask r18 to only keep high half 4 bits
+00009b 9522                      	swap r18           ;swap r18
+00009c d044                      	rcall hex_to_7seg  ;convert hex to 7 seg 
+00009d 772f                      	andi r18, 0x7f     ;turn on decimal points of digit 1
+00009e 8321                      	std Z+1, r18       ;stores the 7 segment value to led_display[1]
+00009f 2f27                      	mov r18, r23       ;copy r23 to r18
+0000a0 702f                      	andi r18, 0x0f     ;mask r18 to only keep low half 4 bits
+0000a1 d03f                      	rcall hex_to_7seg  ;convert hex to 7 seg 
+0000a2 8322                      	std Z+2, r18       ;stores the 7 segment value to led_display[2]
+0000a3 2f27                      	mov r18, r23       ;copy r23 to r18
+0000a4 7f20                      	andi r18, 0xf0     ;mask r18 to only keep high half 4 bits
+0000a5 9522                      	swap r18           ;swap r18
+0000a6 d03a                      	rcall hex_to_7seg  ;convert hex to 7 seg 
+0000a7 8323                      	std Z+3, r18       ;stores the 7 segment value to led_display[3]
+0000a8 e001                      	ldi r16, 0x01
+0000a9 9300 0608                 	sts ADC0_COMMAND, r16 ;start ADC0's converstion
+                                 
+0000ab 910f                      	pop r16
+0000ac bf0f                      	out cpu_SREG, r16 ;pops status register back 
+0000ad 918f                      	pop r24  ;pops r24 back
+0000ae 917f                      	pop r23  ;pops r23 back
+0000af 916f                      	pop r22  ;pops r22 back
+0000b0 915f                      	pop r21  ;pops r21 back
+0000b1 914f                      	pop r20  ;pops r20 back
+0000b2 913f                      	pop r19  ;pops r19 back
+0000b3 912f                      	pop r18  ;pops r18 back
+0000b4 911f                      	pop r17  ;pops r17 back
+0000b5 910f                      	pop r16  ;pops r16 back
+0000b6 90ff                      	pop r15  ;pops r15 back
+0000b7 90ef                      	pop r14  ;pops r14 back
+0000b8 9518                      	reti
+                                 
+                                 ;*******************************************************************
+                                 ;* 
+                                 ;* "multiplex_display" - Multiplex the Four Digit LED Display
+                                 ;*
+                                 ;* Description: Updates a single digit of the display and increments
+                                 ;* the digit_num to the value of the digit position to be displayed
+                                 ;* next.
+                                 ;* Author:					Pengxu Chen
+                                 ;* Version:					3.0						
+                                 ;* Last updated:			11/19/2020
+                                 ;* Target:					ATmega4809 @ 3.3MHz
+                                 ;* Number of words:         40
+                                 ;* Number of cycles:        24
+                                 ;* Low registers modified:	none
+                                 ;* High registers modified: r16, r17, r18, YL, YH
+                                 ;*
+                                 ;* Parameters:
+                                 ;* led_display: a four byte array that holds the segment values
+                                 ;* pattern for each digit of the display. led_display[0] holds the 
+                                 ;* segment for digit 0 (the rightmost digit) and so on.
+                                 ;* digit_num: a byte variable, the least significant two bits  
+                                 ;* provide the index of the next digit to be displayed.
+                                 ;*
+                                 ;* Returns: Outputs segment pattern and turns on digit driver for 
+                                 ;* the next position in the display to be turned ON in the 
+                                 ;* multiplexing sequence.
+                                 ;*
+                                 ;* Notes: 
+                                 ;*
+                                 ;*******************************************************************
+                                 multiplex_display:
+0000b9 e0c1                      	ldi YL, LOW(led_display)
+0000ba e2d8                      	ldi YH, HIGH(led_display);set Y to point to start of led_display
+0000bb 9110 2800                 	lds r17, digit_num      ;load digit number to r17
+0000bd 3010                      	cpi r17, 0              ;compare r17 with 0
+0000be f031                      	breq digit_zero         ;branch to digit_zero if r17 equal to 0
+0000bf 3011                      	cpi r17, 1              ;compare r17 with 1
+0000c0 f049                      	breq digit_one          ;branch to digit_one if r17 equal to 1
+0000c1 3012                      	cpi r17, 2              ;compare r17 with 2
+0000c2 f061                      	breq digit_two          ;branch to digit_two if r17 equal to 2
+0000c3 3013                      	cpi r17, 3              ;compare r17 with 3
+0000c4 f079                      	breq digit_three        ;branch to digit_three if r17 equal to 3
+                                 ;multiplex display for digit0
+                                 digit_zero:
+0000c5 ee0f                      	ldi r16, 0xef       ;load r16 with 0x7f
+0000c6 8128                      	ldd r18, Y+0        ;load led_display[0] to r18
+0000c7 b92d                      	out VPORTD_OUT, r18 ;output r18 to portD
+0000c8 b909                      	out VPORTC_OUT, r16 ;output r16 to portC
+0000c9 c011                      	rjmp check_digit_num;jump to check_digit_num
+                                 ;multiplex display for digit1
+                                 digit_one:
+0000ca ed0f                      	ldi r16, 0xdf       ;load r16 with 0xbf
+0000cb 8129                      	ldd r18, Y+1        ;load led_display[1] to r18
+0000cc b92d                      	out VPORTD_OUT, r18 ;output r18 to portD
+0000cd b909                      	out VPORTC_OUT, r16 ;output r16 to portC
+0000ce c00c                      	rjmp check_digit_num;jump to check_digit_num
+                                 ;multiplex display for digit2
+                                 digit_two:
+0000cf eb0f                      	ldi r16, 0xbf       ;load r16 with 0xdf
+0000d0 812a                      	ldd r18, Y+2        ;load led_display[2] to r18 
+0000d1 b92d                      	out VPORTD_OUT, r18 ;output r18 to portD
+0000d2 b909                      	out VPORTC_OUT, r16 ;output r16 to portC
+0000d3 c007                      	rjmp check_digit_num;jump to check_digit_num
+                                 ;multiplex display for digit3
+                                 digit_three:
+0000d4 e70f                      	ldi r16, 0x7f       ;load r16 with 0xef
+0000d5 812b                      	ldd r18, Y+3        ;load led_display[3] to r18 
+0000d6 b92d                      	out VPORTD_OUT, r18 ;output r18 to portD
+0000d7 b909                      	out VPORTC_OUT, r16 ;output r16 to portC
+0000d8 c002                      	rjmp check_digit_num;jump to check_digit_num
+                                 ;set digit number to digit0
+                                 reset_digit:
+0000d9 e010                      	ldi r17, 0           ;load r17 with 0
+0000da c003                      	rjmp update_digit_num;jump to update_digit_num
+                                 
+                                 check_digit_num:
+0000db 9513                      	inc r17              ;increase r17 by 1
+0000dc 3014                      	cpi r17, 4           ;compare r17 wtih 4
+0000dd f3d9                      	breq reset_digit     ;branch to reset_digit if r17 is 4 
+                                 
+                                 update_digit_num:
+0000de 9310 2800                 	sts digit_num, r17  ;store r17 to digit_num
+0000e0 9508                      	ret                 ;return to stack
+                                 ;*******************************************************************
+                                 ;* 
+                                 ;* "hex_to_7seg" - Hexadecimal to Seven Segment Conversion
+                                 ;*
+                                 ;* Description: Converts a right justified hexadecimal digit to the 
+                                 ;* seven segment pattern required to display it. Pattern is right 
+                                 ;* justified a through g. Pattern uses 0s to turn segments on ON.
+                                 ;*
+                                 ;* Author:					Pengxu Chen
+                                 ;* Version:					1.0						
+                                 ;* Last updated:			11/19/2020
+                                 ;* Target:					ATmega4809
+                                 ;* Number of words:			10
+                                 ;* Number of cycles:		15
+                                 ;* Low registers modified:		none		
+                                 ;* High registers modified:		r16, r18, ZL, ZH
+                                 ;*
+                                 ;* Parameters: r18: right justified hex digit, high nibble 0
+                                 ;* Returns: r18: segment values a through g right justified
+                                 ;*
+                                 ;* Notes: 
+                                 ;*
+                                 ;*******************************************************************
+                                 hex_to_7seg:
+0000e1 702f                      	andi r18, 0x0F			  ;clear ms nibble
+0000e2 e0f1                          ldi ZH, HIGH(hextable * 2);set Z to point to start of table
+0000e3 ede6                          ldi ZL, LOW(hextable * 2)
+0000e4 e000                          ldi r16, $00			;add offset to Z pointer
+0000e5 0fe2                          add ZL, r18
+0000e6 1ff0                          adc ZH, r16
+0000e7 9124                          lpm r18, Z         ;load byte from table pointed to by Z
+0000e8 e0e1                      	ldi ZL, LOW(led_display)
+0000e9 e2f8                      	ldi ZH, HIGH(led_display);load adress of led_display to Z
+0000ea 9508                      	ret
+                                 
+                                     ;Table of segment values to display digits 0 - F
+                                     ;!!! seven values must be added - verify all values
+0000eb cf81
+0000ec 8692
+0000ed a4cc
+0000ee 8fa0                      hextable: .db $81, $CF, $92, $86, $CC, $A4, $A0, $8F
+0000ef 8c80
+0000f0 e088
+0000f1 c2b1
+0000f2 b8b0                      		  .db $80, $8C, $88, $E0, $B1, $C2, $B0, $B8
+                                 
+                                 ;*******************************************************************
+                                 ;* 
+                                 ;* "post_display" - post display
+                                 ;*
+                                 ;* Description: This program quickly multiplex each digit on display
+                                 ;* to display "8.", so that it looks like all the digits displays
+                                 ;* "8." at the same time. After one second, all the digits are
+                                 ;*  turned off.
+                                 ;*
+                                 ;* Author:					Pengxu Chen
+                                 ;* Version:					2.0
+                                 ;* Last updated:			11/19/2020
+                                 ;* Target:					ATmega4809
+                                 ;* Number of words:         8
+                                 ;* Number of cycles:        3341865
+                                 ;* Low registers modified:
+                                 ;* High registers modified: r16, r19
+                                 ;*
+                                 ;* Parameters: None
+                                 ;* Returns:    None
+                                 ;*
+                                 ;* Notes: 
+                                 ;*
+                                 ;*******************************************************************
+                                 post_display:
+0000f3 e93f                      	ldi r19, 159  ;call var_delay 159 times
+                                 loop:
+0000f4 e30f                      	ldi r16, 63     ;each time "var_delay" delays for 6.3ms
+0000f5 d005                      	rcall var_delay
+0000f6 953a                      	dec r19
+0000f7 f7e1                      	brne loop
+0000f8 ef0f                      	ldi r16, 0xff       
+0000f9 b909                      	out VPORTC_OUT, r16 ;turn off all the digit
+0000fa 9	508                      	ret
+                                 
+                                 ;*******************************************************************
+                                 ;* 
+                                 ;* "var_delay" - varriable delay
+                                 ;*
+                                 ;* Description: Delay the system for certain period of time
+                                 ;*
+                                 ;* Author:					Pengxu Chen
+                                 ;* Version:					2.0
+                                 ;* Last updated:			11/12/2020
+                                 ;* Target:					ATmega4809
+                                 ;* Number of words:         7
+                                 ;* Number of cycles:        16654
+                                 ;* Low registers modified:
+                                 ;* High registers modified: r16, r17
+                                 ;*
+                                 ;* Parameters: None
+                                 ;* Returns:    None
+                                 ;*
+                                 ;* Notes: 
+                                 ;*
+                                 ;*******************************************************************
+                                 var_delay:
+                                 outer_loop:
+0000fb e61e                      	ldi r17,110    ;inner loop counter
+                                 inner_loop:
+0000fc 951a                      	dec r17
+0000fd f7f1                      	brne inner_loop ;if r17 is not equal 0, brach to "inner_loop" 
+0000fe 950a                      	dec r16
+0000ff f7d9                      	brne outer_loop ;if r16 is not equal 0, brach to "outer_loop" 
+000100 9508                      	ret
+                                 
+                                 ;*******************************************************************
+                                 ;* 
+                                 ;* "bin16_to_BCD" - 16-bit Binary to BCD Conversion
+                                 ;*
+                                 ;* Description: Converts a 16-bit unsigned binary number to a five
+                                 ;* digit packed BCD number. Uses subroutine div16u from Atmel
+                                 ;* application note AVR200
+                                 ;*
+                                 ;* Author:					Ken Short
+                                 ;* Version:					0.0
+                                 ;* Last updated:			11/19/2020
+                                 ;* Target:					ATmega4809
+                                 ;* Number of words:         15
+                                 ;* Number of cycles:        1258
+                                 ;* Low registers modified:	r14, r15
+                                 ;* High registers modified: r16, r17, r18, r19, r20, r22, r23, r24
+                                 ;*
+                                 ;* Parameters: r17:r16 16-bit unsigned right justified number to
+                                 ;*             be converted.
+                                 ;* Returns:		r24:r23:r22 five digit packed BCD result.
+                                 ;*
+                                 ;* Notes: 
+                                 ;* Subroutine uses repeated division by 10 to perform conversion.
+                                 ;*******************************************************************
+                                 bin16_to_BCD:
+000101 e030                      	ldi r19, 0		;high byte of divisor for div16u
+000102 e02a                      	ldi r18, 10		;low byte of the divisor for div16u
+                                 
+000103 d00c                      	rcall div16u	;divide original binary number by 10
+000104 2d6e                      	mov r22, r14   ;result is BCD digit 0 (least significant digit)
+000105 d00a                      	rcall div16u	;divide 1st division's result by 10, as digit 1 
+000106 94e2                      	swap r14		;swap digit 1 for packing
+000107 296e                      	or r22, r14		;pack
+                                 
+000108 d007                      	rcall div16u	;divide 2rd division's result by 10, as digit 2 
+000109 2d7e                      	mov r23, r14	;place in r23
+00010a d005                      	rcall div16u	;divide 3rd division's result by 10, as digit 3 
+00010b 94e2                      	swap r14		;swap digit 3 for packing
+00010c 297e                      	or r23, r14		;pack
+                                 
+00010d d002                      	rcall div16u	;divide 4th division's result by 10, as digit 4 
+00010e 2d8e                      	mov r24, r14	;place in r24
+                                 
+00010f 9508                      	ret
+                                 
+                                 
+                                 ;Subroutine div16u is from Atmel application note AVR200
+                                 
+                                 ;*******************************************************************
+                                 ;*
+                                 ;* "div16u" - 16/16 Bit Unsigned Division
+                                 ;*
+                                 ;* This subroutine divides the two 16-bit numbers 
+                                 ;*# "dd16uH:dd16uL" (dividend) and "dv16uH:dv16uL" (divisor). 
+                                 ;* The result is placed in "dres16uH:dres16uL" and the remainder in
+                                 ;* "drem16uH:drem16uL".
+                                 ;*  
+                                 ;* Number of words	:19
+                                 ;* Number of cycles	:235/251 (Min/Max)
+                                 ;* Low registers used	:2 (drem16uL,drem16uH)
+                                 ;* High registers used  :5 (dres16uL/dd16uL,dres16uH/dd16uH,dv16uL,
+                                 ;*						    dv16uH, dcnt16u)
+                                 ;*
+                                 ;*******************************************************************
+                                 
+                                 ;***** Subroutine Register Variables
+                                 
+                                 .def	drem16uL=r14
+                                 .def	drem16uH=r15
+                                 .def	dres16uL=r16
+                                 .def	dres16uH=r17
+                                 .def	dd16uL	=r16
+                                 .def	dd16uH	=r17
+                                 .def	dv16uL	=r18
+                                 .def	dv16uH	=r19
+                                 .def	dcnt16u	=r20
+                                 
+                                 ;***** Code
+                                 
+000110 24ee                      div16u:	clr	drem16uL	;clear remainder Low byte
+000111 18ff                      	sub	drem16uH,drem16uH;clear remainder High byte and carry
+000112 e141                      	ldi	dcnt16u,17	;init loop counter
+000113 1f00                      d16u_1:	rol	dd16uL		;shift left dividend
+000114 1f11                      	rol	dd16uH
+000115 954a                      	dec	dcnt16u		;decrement counter
+000116 f409                      	brne	d16u_2		;if done
+000117 9508                      	ret			;    return
+000118 1cee                      d16u_2:	rol	drem16uL	;shift dividend into remainder
+000119 1cff                      	rol	drem16uH
+00011a 1ae2                      	sub	drem16uL,dv16uL	;remainder = remainder - divisor
+00011b 0af3                      	sbc	drem16uH,dv16uH	;
+00011c f420                      	brcc	d16u_3		;if result negative
+00011d 0ee2                      	add	drem16uL,dv16uL	;    restore remainder
+00011e 1ef3                      	adc	drem16uH,dv16uH
+00011f 9488                      	clc			;    clear carry to be shifted into result
+000120 cff2                      	rjmp	d16u_1		;else
+000121 9408                      d16u_3:	sec			;    set carry to be shifted into result
+000122 cff0                      	rjmp	d16u_1
+                                 
+                                 ;*******************************************************************
+                                 ;*
+                                 ;* "mpy16u" - 16x16 Bit Unsigned Multiplication
+                                 ;*
+                                 ;* This subroutine multiplies the two 16-bit register variables 
+                                 ;* mp16uH:mp16uL and mc16uH:mc16uL.
+                                 ;* The result is placed in m16u3:m16u2:m16u1:m16u0.
+                                 ;*  
+                                 ;* Number of words	:14 + return
+                                 ;* Number of cycles	:153 + return
+                                 ;* Low registers used	:None
+                                 ;* High registers used  :7 (mp16uL,mp16uH,mc16uL/m16u0,mc16uH/
+                                 ;*                          m16u1,m16u2, m16u3,mcnt16u)	
+                                 ;*
+                                 ;*******************************************************************
+                                 
+                                 ;***** Subroutine Register Variables
+                                 
+                                 .def	mc16uL	=r16		;multiplicand low byte
+                                 .def	mc16uH	=r17		;multiplicand high byte
+                                 .def	mp16uL	=r18		;multiplier low byte
+                                 .def	mp16uH	=r19		;multiplier high byte
+                                 .def	m16u0	=r18		;result byte 0 (LSB)
+                                 .def	m16u1	=r19		;result byte 1
+                                 .def	m16u2	=r20		;result byte 2
+                                 .def	m16u3	=r21		;result byte 3 (MSB)
+                                 .def	mcnt16u	=r22		;loop counter
+                                 
+                                 ;***** Code
+                                 
+000123 2755                      mpy16u:	clr	m16u3		;clear 2 highest bytes of result
+000124 2744                      	clr	m16u2
+000125 e160                      	ldi	mcnt16u,16	;init loop counter
+000126 9536                      	lsr	mp16uH
+000127 9527                      	ror	mp16uL
+                                 
+000128 f410                      m16u_1:	brcc	noad8		;if bit 0 of multiplier set
+000129 0f40                      	add	m16u2,mc16uL	;add multiplicand Low to byte 2 of res
+00012a 1f51                      	adc	m16u3,mc16uH	;add multiplicand high to byte 3 of res
+00012b 9557                      noad8:	ror	m16u3		;shift right result byte 3
+00012c 9547                      	ror	m16u2		;rotate right result byte 2
+00012d 9537                      	ror	m16u1		;rotate result byte 1 and multiplier High
+00012e 9527                      	ror	m16u0		;rotate result byte 0 and multiplier Low
+00012f 956a                      	dec	mcnt16u		;decrement loop counter
+000130 f7b9                      	brne	m16u_1		;if not done, loop more
+000131 9508                      	ret
+
+
+RESOURCE USE INFORMATION
+------------------------
+
+Notice:
+The register and instruction counts are symbol table hit counts,
+and hence implicitly used resources are not counted, eg, the
+'lpm' instruction without operands implicitly uses r0 and z,
+none of which are counted.
+
+x,y,z are separate entities in the symbol table and are
+counted separately from r26..r31 here.
+
+.dseg memory usage only counts static data declared with .byte
+
+"ATmega4809" register use summary:
+x  :   0 y  :   8 z  :   5 r0 :   0 r1 :   0 r2 :   0 r3 :   0 r4 :   0 
+r5 :   0 r6 :   0 r7 :   0 r8 :   0 r9 :   0 r10:   0 r11:   0 r12:   0 
+r13:   0 r14:  13 r15:   7 r16:  69 r17:  21 r18:  36 r19:  14 r20:  11 
+r21:   5 r22:   8 r23:   6 r24:   3 r25:   0 r26:   0 r27:   0 r28:   2 
+r29:   2 r30:   4 r31:   4 
+Registers used: 17 out of 35 (48.6%)
+
+"ATmega4809" instruction use summary:
+.lds  :   0 .sts  :   0 adc   :   3 add   :   3 adiw  :   0 and   :   0 
+andi  :   6 asr   :   0 bclr  :   0 bld   :   0 brbc  :   0 brbs  :   0 
+brcc  :   2 brcs  :   0 break :   0 breq  :   5 brge  :   0 brhc  :   0 
+brhs  :   0 brid  :   0 brie  :   0 brlo  :   0 brlt  :   0 brmi  :   0 
+brne  :   5 brpl  :   0 brsh  :   0 brtc  :   0 brts  :   0 brvc  :   0 
+brvs  :   0 bset  :   0 bst   :   0 call  :   0 cbi   :   0 cbr   :   0 
+clc   :   2 clh   :   0 cli   :   2 cln   :   0 clr   :   3 cls   :   0 
+clt   :   0 clv   :   0 clz   :   0 com   :   0 cp    :   0 cpc   :   0 
+cpi   :   5 cpse  :   0 dec   :   5 des   :   0 eor   :   0 fmul  :   0 
+fmuls :   0 fmulsu:   0 icall :   0 ijmp  :   0 in    :   2 inc   :   1 
+jmp   :   3 ld    :   0 ldd   :   4 ldi   :  44 lds   :   3 lpm   :   2 
+lsl   :   0 lsr   :   3 mov   :   9 movw  :   0 mul   :   0 muls  :   0 
+mulsu :   0 neg   :   0 nop   :   1 or    :   2 ori   :   0 out   :  13 
+pop   :  16 push  :  16 rcall :  14 ret   :   7 reti  :   2 rjmp  :   8 
+rol   :   4 ror   :   7 sbc   :   2 sbci  :   0 sbi   :   0 sbic  :   0 
+sbis  :   0 sbiw  :   0 sbr   :   0 sbrc  :   0 sbrs  :   0 sec   :   1 
+seh   :   0 sei   :   1 sen   :   0 ser   :   0 ses   :   0 set   :   0 
+sev   :   0 sez   :   0 sleep :   0 spm   :   0 st    :   0 std   :   8 
+sts   :  16 sub   :   3 subi  :   0 swap  :   4 tst   :   0 wdr   :   0 
+
+Instructions used: 38 out of 114 (33.3%)
+
+"ATmega4809" memory use summary [bytes]:
+Segment   Begin    End      Code   Data   Used    Size   Use%
+---------------------------------------------------------------
+[.cseg] 0x000000 0x000264    516     16    532   49152   1.1%
+[.dseg] 0x002800 0x002805      0      5      5    6144   0.1%
+[.eseg] 0x000000 0x000000      0      0      0     256   0.0%
+
+Assembly complete, 0 errors, 9 warnings
